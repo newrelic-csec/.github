@@ -8,13 +8,13 @@ on:
 
 jobs:
   fossa:
+    if: ${{ secrets.FOSSA_API_KEY != ''}}
     runs-on: ubuntu-latest
     env:
       FOSSA_API_KEY: ${{secrets.FOSSA_API_KEY}}
       ORG: ${{ github.repository_owner }}
       REPO: ${{ github.repository }}
       CUSTOM_PROPS_PAT: ${{ secrets.FOSSA_PAT }}
-    if: env.FOSSA_API_KEY
 
     strategy:
       fail-fast: false
