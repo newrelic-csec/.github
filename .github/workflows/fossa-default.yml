@@ -14,7 +14,7 @@ jobs:
       ORG: ${{ github.repository_owner }}
       REPO: ${{ github.repository }}
       CUSTOM_PROPS_PAT: ${{ secrets.FOSSA_PAT }}
-    if: FOSSA_API_KEY
+    if: env.FOSSA_API_KEY
 
     strategy:
       fail-fast: false
