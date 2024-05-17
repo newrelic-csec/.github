@@ -7,15 +7,22 @@ on:
   workflow_dispatch:
 
 jobs:
-  fossa:
-    if: ${{ secrets.FOSSA_API_KEY != ''}}
+  check_env:
     runs-on: ubuntu-latest
     env:
-      FOSSA_API_KEY: ${{secrets.FOSSA_API_KEY}}
+      FOSSA_API_KEY: ${{ secrets.FOSSA_API_KEY || ''}}
+    outputs:
+      FOSSA_API_KEY: $FOSSA_API_KEY
+      
+  fossa:
+    needs: check_env
+    if: ${{ needs.check_env.FOSSA_API_KEY != '' }}
+    runs-on: ubuntu-latest
+    env:
+      FOSSA_API_KEY: ${{ secrets.FOSSA_API_KEY}}
       ORG: ${{ github.repository_owner }}
       REPO: ${{ github.repository }}
       CUSTOM_PROPS_PAT: ${{ secrets.FOSSA_PAT }}
-
     strategy:
       fail-fast: false
 
