@@ -8,6 +8,7 @@ on:
 
 jobs:
   fossa:
+    if: github.repository_owner == 'newrelic-csec'
     runs-on: ubuntu-latest
     env:
       FOSSA_API_KEY: ${{secrets.FOSSA_API_KEY}}
