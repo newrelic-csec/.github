@@ -2,10 +2,10 @@ name: 'FOSSA Composite Action'
 description: 'Shared action for running FOSSA workflows'
 runs:
   using: 'composite'
+  shell: bash
   steps: 
     - id: fossa-list-targets
       name: Run fossa list-targets
-      shell: bash
       run: |
         curl -H 'Cache-Control: no-cache' https://raw.githubusercontent.com/fossas/fossa-cli/master/install-latest.sh | bash
         export LIST_TARGETS_OUT_FILE=${{ runner.temp }}/list-targets_out.txt
@@ -31,7 +31,6 @@ runs:
 
     - id: fossa-analyze
       name: Run fossa analyze
-      shell: bash
       if: ${{ env.HAS_FOSSA_TARGETS == 'True'}}
       run: |
         export ANALYZE_OUT_FILE=${{ runner.temp }}/analyze_out.txt
@@ -48,7 +47,6 @@ runs:
         fi
 
     - name: Set custom properties 
-      shell: bash
       run: |
         response=$(curl --write-out '%{http_code}' --silent --output /dev/null \
           -L \
@@ -64,7 +62,6 @@ runs:
             echo "::warning::Writing custom properties failed."
         fi
     - name: Exit
-      shell: bash
       if: ${{ env.HAS_FOSSA_TARGETS == 'Error' || env.FOSSA_ANALYZE_RESULT == 'Error' }}
       run: |
         exit 1
