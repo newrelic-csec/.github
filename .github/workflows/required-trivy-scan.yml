@@ -16,19 +16,29 @@ jobs:
   vulnerability-scan:
     name: Trivy Vulnerability Scan
     runs-on: ubuntu-latest
+    
+    # --- CHANGE 1: Added 'packages: read' permission ---
+    # This grants the GITHUB_TOKEN the scope needed to pull images from GHCR.
     permissions:
       contents: read
+      packages: read # Required to read from GHCR
       security-events: write
-    
-    # --- CHANGE 1: New 'env' block at the job level ---
-    # We check if the secret exists here and create an environment variable 'flag'.
-    # This expression will set the variable to the string 'true' if the secret is not empty.
+
     env:
       SLACK_WEBHOOK_URL_SET: ${{ secrets.TEAM_SLACK_WEBHOOK_URL != '' }}
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+
+      # --- CHANGE 2: Added Login Step ---
+      # This step authenticates the runner's Docker client to GHCR.
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Run Trivy for console output (All Vulnerabilities)
         uses: aquasecurity/trivy-action@master
@@ -61,8 +71,6 @@ jobs:
         if: always()
 
       - name: Send Slack Notification on Failure
-        # --- CHANGE 2: Updated 'if' condition ---
-        # It now checks the 'safe' environment variable instead of the secret directly.
         if: steps.trivy_sarif_scan.outcome == 'failure' && env.SLACK_WEBHOOK_URL_SET == 'true'
         uses: slackapi/slack-github-action@v1.26.0
         with:
