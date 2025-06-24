@@ -1,3 +1,4 @@
+# The final, correct version for: newrelic-csec/.github/.github/workflows/required-trivy-scan.yml
 name: 'Organization Vulnerability Scan'
 
 on:
@@ -40,7 +41,7 @@ jobs:
         with:
           image-ref: ${{ inputs.image-name }}
           scan-type: 'image'
-          severity: 'CRITICAL,HIGH,MEDIUM,LOW'
+          severity: 'CRITICAL,HIGH,MEDIUM,LOW,UNKNOWN'
           ignore-unfixed: false
           format: 'table'
           exit-code: '0'
@@ -51,5 +52,41 @@ jobs:
         with:
           image-ref: ${{ inputs.image-name }}
           scan-type: 'image'
-          severity: 'CRITICAL,HIGH,MEDIUM,LOW'
+          severity: 'CRITICAL,HIGH,MEDIUM,LOW,UNKNOWN'
           ignore-unfixed: true
+          # --- These parameters are essential ---
+          format: 'sarif'
+          output: 'trivy-results.sarif'
+          exit-code: '1'
+        continue-on-error: true
+
+      - name: Upload Trivy SARIF report to GitHub Security
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: 'trivy-results.sarif'
+        if: always()
+
+      - name: Send Slack Notification on Failure
+        if: steps.trivy_sarif_scan.outcome == 'failure' && env.SLACK_WEBHOOK_URL_SET == 'true'
+        uses: slackapi/slack-github-action@v1.26.0
+        with:
+          payload: |
+            {
+              "blocks": [
+                {
+                  "type": "section",
+                  "text": { "type": "mrkdwn", "text": "🚨 *Vulnerability Alert in `${{ github.repository }}`*" }
+                },
+                {
+                  "type": "section",
+                  "text": { "type": "mrkdwn", "text": "High or critical vulnerabilities with an available fix were detected." }
+                },
+                {
+                  "type": "actions",
+                  "elements": [ { "type": "button", "text": { "type": "plain_text", "text": "View Workflow Run" }, "url": "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}" } ]
+                }
+              ]
+            }
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.TEAM_SLACK_WEBHOOK_URL }}
+          SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK
