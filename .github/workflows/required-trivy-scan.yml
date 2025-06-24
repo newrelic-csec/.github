@@ -1,4 +1,4 @@
-name: 'Organization Trivy Docker and Dependency Vulnerability Scan'
+name: 'Organization Vulnerability Scan'
 
 on:
   workflow_call:
@@ -19,6 +19,12 @@ jobs:
     permissions:
       contents: read
       security-events: write
+    
+    # --- CHANGE 1: New 'env' block at the job level ---
+    # We check if the secret exists here and create an environment variable 'flag'.
+    # This expression will set the variable to the string 'true' if the secret is not empty.
+    env:
+      SLACK_WEBHOOK_URL_SET: ${{ secrets.TEAM_SLACK_WEBHOOK_URL != '' }}
 
     steps:
       - name: Checkout repository
@@ -29,23 +35,23 @@ jobs:
         with:
           image-ref: ${{ inputs.image-name }}
           scan-type: 'image'
-          severity: 'CRITICAL,HIGH,MEDIUM,LOW'
-          ignore-unfixed: false # Show both fixed and unfixed vulns in the log table
+          severity: 'CRITICAL,HIGH,MEDIUM,LOW,UNKNOWN'
+          ignore-unfixed: false
           format: 'table'
-          exit-code: '0' # Do not fail the job on this step
+          exit-code: '0'
 
       - name: Run Trivy for SARIF report (Fixed Vulnerabilities Only)
-        id: trivy_sarif_scan # Give this step a unique ID
+        id: trivy_sarif_scan
         uses: aquasecurity/trivy-action@master
         with:
           image-ref: ${{ inputs.image-name }}
           scan-type: 'image'
-          severity: 'CRITICAL,HIGH,MEDIUM,LOW'
-          ignore-unfixed: true # CRITICAL: Only report vulnerabilities with a fix
+          severity: 'CRITICAL,HIGH,MEDIUM,LOW,UNKNOWN'
+          ignore-unfixed: true
           format: 'sarif'
           output: 'trivy-results.sarif'
-          exit-code: '1' # Fail the job if fixed vulns are found
-        continue-on-error: true # Continue to the next step even if this one fails
+          exit-code: '1'
+        continue-on-error: true
 
       - name: Upload Trivy SARIF report to GitHub Security
         uses: github/codeql-action/upload-sarif@v3
@@ -55,7 +61,9 @@ jobs:
         if: always()
 
       - name: Send Slack Notification on Failure
-        if: steps.trivy_sarif_scan.outcome == 'failure' && secrets.TEAM_SLACK_WEBHOOK_URL
+        # --- CHANGE 2: Updated 'if' condition ---
+        # It now checks the 'safe' environment variable instead of the secret directly.
+        if: steps.trivy_sarif_scan.outcome == 'failure' && env.SLACK_WEBHOOK_URL_SET == 'true'
         uses: slackapi/slack-github-action@v1.26.0
         with:
           payload: |
